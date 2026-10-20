@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2025 Oracle and/or its affiliates.
+# Copyright (c) 2025, 2026 Oracle and/or its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ $(basename "${0}") [OPTIONS] --directory=DIR CMD
   CMD:
 
     upload_release
-        Upload staging directory to a release repository
+        Upload staging directory to a release repository. Prints deployment ID
 
     upload_snapshot
         Uploading staging directory to a snapshots repository
@@ -98,6 +98,7 @@ case ${COMMAND} in
   fi
   ;;
 "upload_snapshot")
+  # no-op
   ;;
 "")
   echo "ERROR: no command provided" >&2
@@ -134,6 +135,7 @@ if [ ! -d "${STAGING_DIR}" ] ; then
 fi
 
 # Central Portal URL for releases
+#readonly CENTRAL_URL="http://localhost:8080/api/v1/"
 readonly CENTRAL_URL="https://central.sonatype.com/api/v1"
 # Central SNAPSHOT URL
 readonly SNAPSHOT_URL="https://central.sonatype.com/repository/maven-snapshots"
@@ -184,12 +186,13 @@ upload_release() {
   version=$(find_version)
 
   # Make sure version does NOT end in -SNAPSHOT
-  if [[ "${v}" = *-SNAPSHOT ]]; then
+  if [[ "${version}" = *-SNAPSHOT ]]; then
     echo "ERROR: Version ${version} is a SNAPSHOT version" >&2
     exit 1
   fi
 
   deployment_id="$(central_upload "${CENTRAL_URL}" "${STAGING_DIR}")"
+  printf "deployment_id=%s\n" "${deployment_id}" >&6
   central_finish "${deployment_id}"
 }
 
@@ -297,7 +300,7 @@ nexus_upload() {
   # Upload
   curl -s \
     --user "${CENTRAL_USER}:${CENTRAL_PASSWORD}" \
-    --write-out "%{stderr}%{http_code} %{url_effective} t_tot=%{time_total}s %{speed_upload}B/s\n" \
+    --write-out "%{stderr}%{http_code} %{url_effective} t_pretrans=%{time_pretransfer}s t_tot=%{time_total}s %{speed_upload}B/s\n" \
     --config "${tmpfile}" \
     --parallel \
     --parallel-max 10 \
